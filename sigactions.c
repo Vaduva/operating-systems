@@ -46,7 +46,20 @@ int main() {
     if (pid == 0) {
         // In child process
 
-        // Ignore SIGINT signal
+        sigset_t signalset;
+
+        // Initialize signalset as empty
+        sigemptyset(&signalset);
+
+        // Add SIGINT to signalset
+        sigaddset(&signalset, SIGINT);
+
+        // Block signals from signalset (SIGINT, that is)
+        if (sigprocmask(SIG_BLOCK, &signalset, NULL) == -1){
+            printf("Error blocking SIGINT signal\n");
+            exit(1);
+        }
+
         s.sa_handler = SIG_IGN;
         if (sigaction(SIGINT, &s, 0) == -1) {
             printf("Error setting handler for child SIGINT\n");
