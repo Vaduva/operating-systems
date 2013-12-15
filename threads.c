@@ -21,24 +21,24 @@ struct limit {
 
 
 int numbers[5000], count = 0;
-float averages[5000];
 struct limit limits[5000];
 
 
 void *do_average(void *arg) {
-    // Get limit from passed argument
-    int limit_id = (int)arg;
+    // Get limit struct from passed argument
+    struct limit l = *((struct limit *)arg);
 
     // Compute average for `numbers` array, within `limits` limits
     int sum = 0, count = 0, i;
-    for (i = limits[limit_id].from; i <= limits[limit_id].to; i++) {
+    for (i = l.from; i <= l.to; i++) {
         sum += numbers[i];
         count++;
     }
 
-    averages[limit_id] = sum / count;
+    float *avg = malloc(sizeof(float));
+    *avg = sum / count;
 
-    pthread_exit(NULL);
+    pthread_exit(avg);
 }
 
 int main(int argc, char* argv[]) {
@@ -75,24 +75,21 @@ int main(int argc, char* argv[]) {
         limits[i].from = i * numbers_per_thread;
         limits[i].to = (i+1) * numbers_per_thread - 1;
 
-        if (pthread_create(&threads[i], NULL, do_average, (void *)i) != 0) {
+        if (pthread_create(&threads[i], NULL, do_average, &limits[i]) != 0) {
             printf("Thread \"%d\" could not be created\n", i);
             exit(1);
         }
     }
 
     // Join created threads (wait for each thread to terminate before proceeding)
+    float sum = 0;
     for (i = 0; i < nof_threads; i++) {
-        if (pthread_join(threads[i], NULL) != 0) {
+        float *result;
+        if (pthread_join(threads[i], (void**)&result) != 0) {
             printf("Could not join thread \"%d\"\n", i);
             exit(1);
         }
-    }
-
-    // Compute overall average
-    float sum = 0;
-    for (i = 0; i < nof_threads; i++) {
-        sum += averages[i];
+        sum += *result;
     }
 
     printf("Average for given numbers is %.2f\n", (sum/nof_threads));
